@@ -36,31 +36,27 @@ print("🏗️  ZZ1_RIO_MB_RIO_Disp_RIO_Turnover_RIO_Volatility.py")
 print("Generating Real Investment Opportunities (RIO) predictors")
 print("=" * 80)
 
-print("📊 Preparing IBES data...")
+print("📊 Loading and merging data sources...")
 
-# Prep IBES data
-ibes_eps = pl.read_parquet("../pyData/Intermediate/IBES_EPS_Unadj.parquet")
-temp_ibes = ibes_eps.filter(pl.col("fpi") == "1").select(["tickerIBES", "time_avail_m", "stdev"])
-print(f"IBES EPS data: {len(temp_ibes):,} observations")
+# Load all data sources with column selections
+signal_master = pl.read_parquet("../pyData/Intermediate/SignalMasterTable.parquet", 
+    columns=["permno", "tickerIBES", "time_avail_m", "exchcd", "mve_c"])
+tr_13f = pl.read_parquet("../pyData/Intermediate/TR_13F.parquet", 
+    columns=["permno", "time_avail_m", "instown_perc"])
+m_compustat = pl.read_parquet("../pyData/Intermediate/m_aCompustat.parquet", 
+    columns=["permno", "time_avail_m", "at", "ceq", "txditc"])
+crsp = pl.read_parquet("../pyData/Intermediate/monthlyCRSP.parquet", 
+    columns=["permno", "time_avail_m", "vol", "shrout", "ret"])
+ibes_eps = pl.read_parquet("../pyData/Intermediate/IBES_EPS_Unadj.parquet", 
+    columns=["tickerIBES", "time_avail_m", "stdev", "fpi"])
 
-print("📊 Loading main data sources...")
-
-# DATA LOAD
-signal_master = pl.read_parquet("../pyData/Intermediate/SignalMasterTable.parquet")
-df = signal_master.select(["permno", "tickerIBES", "time_avail_m", "exchcd", "mve_c"])
-print(f"SignalMasterTable: {len(df):,} observations")
-
-# Merge all data sources
-tr_13f = pl.read_parquet("../pyData/Intermediate/TR_13F.parquet")
-df = df.join(tr_13f.select(["permno", "time_avail_m", "instown_perc"]), on=["permno", "time_avail_m"], how="left")
-
-m_compustat = pl.read_parquet("../pyData/Intermediate/m_aCompustat.parquet")
-df = df.join(m_compustat.select(["permno", "time_avail_m", "at", "ceq", "txditc"]), on=["permno", "time_avail_m"], how="left")
-
-crsp = pl.read_parquet("../pyData/Intermediate/monthlyCRSP.parquet")
-df = df.join(crsp.select(["permno", "time_avail_m", "vol", "shrout", "ret"]), on=["permno", "time_avail_m"], how="left")
-
-df = df.join(temp_ibes, on=["tickerIBES", "time_avail_m"], how="left")
+# merge
+df = (signal_master
+      .join(tr_13f, on=["permno", "time_avail_m"], how="left")
+      .join(m_compustat, on=["permno", "time_avail_m"], how="left")
+      .join(crsp, on=["permno", "time_avail_m"], how="left")
+      .join(ibes_eps.filter(pl.col("fpi") == "1").select(["tickerIBES", "time_avail_m", "stdev"]), on=["tickerIBES", "time_avail_m"], how="left")
+)
 
 print(f"After merging all data sources: {len(df):,} observations")
 
