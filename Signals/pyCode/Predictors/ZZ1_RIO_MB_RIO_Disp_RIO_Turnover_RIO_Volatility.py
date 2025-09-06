@@ -82,29 +82,23 @@ print(f"After filtering bottom size quintile: {len(df):,} observations")
 
 print("🏛️ Computing Residual Institutional Ownership (RIO)...")
 
-# Compute RIO following Stata's sequential logic
+# Prepare for RIO calculation
 df = df.with_columns(
     pl.when(pl.col("instown_perc").is_null())
     .then(None)
     .otherwise(pl.col("instown_perc") / 100)
     .alias("temp")
-)
-
-df = df.with_columns(
+).with_columns(
     pl.when(pl.col("temp").is_null())
     .then(0.0)
     .otherwise(pl.col("temp"))
     .alias("temp")
-)
-
-df = df.with_columns(
+).with_columns(
     pl.when(pl.col("temp") > 0.9999)
     .then(0.9999)
     .otherwise(pl.col("temp"))
     .alias("temp")
-)
-
-df = df.with_columns(
+).with_columns(
     pl.when(pl.col("temp") < 0.0001)
     .then(0.0001)
     .otherwise(pl.col("temp"))
@@ -150,26 +144,20 @@ df = pl.from_pandas(df_pandas)
 
 print("📊 Computing characteristic variables...")
 
-# Forecast dispersion, market-to-book, turnover, volatility sorts
+# Calculate secondary sorting variables
 df = df.with_columns(
     pl.when(pl.col("txditc").is_null()).then(0.0).otherwise(pl.col("txditc")).alias("txditc")
-)
-
-df = df.with_columns(
+).with_columns(
     pl.when((pl.col("ceq") + pl.col("txditc")) < 0)
     .then(None)
     .otherwise(pl.col("mve_c") / (pl.col("ceq") + pl.col("txditc")))
     .alias("MB")
-)
-
-df = df.with_columns(
+).with_columns(
     pl.when(pl.col("stdev") > 0)
     .then(pl.col("stdev") / pl.col("at"))
     .otherwise(None)
     .alias("Disp")
-)
-
-df = df.with_columns(
+).with_columns(
     (pl.col("vol") / pl.col("shrout")).alias("Turnover")
 )
 
