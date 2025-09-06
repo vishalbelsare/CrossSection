@@ -11,10 +11,12 @@ Some files are excessively long and complicated.
 2. Implement the changes
 3. Run the script
 4. Run `utils/test_predictor --predictors [script_name]`
-5. Compare the test results with `Logs/testout_predictors 0831n2.md`
+5. Compare the test results with `Logs/testout_predictors 0905n2.md`
     - search for the predictor name in the file
 6. If the test results are different, think about how to fix it.
 7. Report the results below.
     - mark with ✅ if the script is simplified and the test results are at least as good as the original
 
 ## Progress Tracking
+
+- ZZ1_RIO_MB_RIO_Disp_RIO_Turnover_RIO_Volatility.py 
