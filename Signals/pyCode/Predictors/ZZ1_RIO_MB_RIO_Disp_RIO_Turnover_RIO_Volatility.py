@@ -137,10 +137,10 @@ df_pandas['RIOlag'] = df_pandas.apply(
 df_pandas = df_pandas.drop(columns=['lag_date'])
 df = pl.from_pandas(df_pandas)
 
-# Create RIO quintiles - must convert to pandas for fastxtile
-df_pandas = df.to_pandas()
-df_pandas['cat_RIO'] = fastxtile(df_pandas, 'RIOlag', by='time_avail_m', n=5)
-df = pl.from_pandas(df_pandas)
+# Create RIO quintiles
+df = df.with_columns(
+    fastxtile(df, 'RIOlag', by='time_avail_m', n=5).alias('cat_RIO')
+)
 
 print("📊 Computing characteristic variables...")
 
@@ -183,18 +183,32 @@ print("🏷️ Creating characteristic quintiles and RIO interactions...")
 variables = ["MB", "Disp", "Volatility", "Turnover"]
 
 # Convert to pandas for fastxtile operations
-df_pandas = df.to_pandas()
+# df_pandas = df.to_pandas()
 
+# for var in variables:
+#     df_pandas[f'cat_{var}'] = fastxtile(df_pandas, var, by='time_avail_m', n=5)
+#     df_pandas[f'RIO_{var}'] = df_pandas['cat_RIO'].where(df_pandas[f'cat_{var}'] == 5)
+
+# df = pl.from_pandas(df_pandas)
+
+# create quintiles and RIO interactions
 for var in variables:
-    df_pandas[f'cat_{var}'] = fastxtile(df_pandas, var, by='time_avail_m', n=5)
-    df_pandas[f'RIO_{var}'] = df_pandas['cat_RIO'].where(df_pandas[f'cat_{var}'] == 5)
-
-df = pl.from_pandas(df_pandas)
+    df = df.with_columns(
+        fastxtile(df, var, by='time_avail_m', n=5).alias(f'cat_{var}')
+    )
+    df = df.with_columns(
+        pl.when(pl.col(f'cat_{var}') == 5)
+        .then(pl.col('cat_RIO'))
+        .otherwise(None)
+        .alias(f'RIO_{var}')
+    )
 
 # Patch for Dispersion
 df = df.with_columns(
-    pl.when((pl.col("cat_Disp") >= 4) & (pl.col("cat_Disp").is_not_null()))
-    .then(pl.col("cat_RIO"))
+    pl.when((pl.col("cat_Disp") >= 4) 
+        & (pl.col("cat_Disp").is_not_null())
+        & (pl.col("cat_Disp").is_not_nan())
+    ).then(pl.col("cat_RIO"))
     .otherwise(pl.col("RIO_Disp"))
     .alias("RIO_Disp")
 )
