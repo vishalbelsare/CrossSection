@@ -29,6 +29,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from utils.save_standardized import save_predictor
 from utils.stata_fastxtile import fastxtile
 from utils.asrol import asrol_pl
+from utils.stata_replication import stata_multi_lag
 
 print("=" * 80)
 print("🏗️  ZZ1_RIO_MB_RIO_Disp_RIO_Turnover_RIO_Volatility.py")
@@ -137,10 +138,15 @@ df_pandas['RIOlag'] = df_pandas.apply(
 df_pandas = df_pandas.drop(columns=['lag_date'])
 df = pl.from_pandas(df_pandas)
 
+# # lag RIO 6 months
+# For some reason, this does not replicate stata
+# df = df.sort(["permno", "time_avail_m"])
+# df = stata_multi_lag(df, 'permno', 'time_avail_m', 'RIO', [6], freq='M', prefix='l',
+#     fill_gaps=False).rename({'l6_RIO': 'RIOlag'})
+
 # Create RIO quintiles
 df = df.with_columns(
-    fastxtile(df, 'RIOlag', by='time_avail_m', n=5).alias('cat_RIO')
-)
+    fastxtile(df, 'RIOlag', by='time_avail_m', n=5).alias('cat_RIO'))
 
 print("📊 Computing characteristic variables...")
 
@@ -181,17 +187,6 @@ print("🏷️ Creating characteristic quintiles and RIO interactions...")
 
 # Create characteristic quintiles and RIO interactions
 variables = ["MB", "Disp", "Volatility", "Turnover"]
-
-# Convert to pandas for fastxtile operations
-# df_pandas = df.to_pandas()
-
-# for var in variables:
-#     df_pandas[f'cat_{var}'] = fastxtile(df_pandas, var, by='time_avail_m', n=5)
-#     df_pandas[f'RIO_{var}'] = df_pandas['cat_RIO'].where(df_pandas[f'cat_{var}'] == 5)
-
-# df = pl.from_pandas(df_pandas)
-
-# create quintiles and RIO interactions
 for var in variables:
     df = df.with_columns(
         fastxtile(df, var, by='time_avail_m', n=5).alias(f'cat_{var}')
